@@ -1,7 +1,6 @@
 import {readFile} from 'node:fs/promises'
 import process from 'node:process'
 import {dirname, extname, resolve} from 'node:path'
-import {deburr} from 'lodash-es'
 import {parse as parseYaml} from 'yaml'
 import {ValidationError} from './errors.js'
 import type {CacheSpec, KitContext, MountSpec, Pipeline, PipelineDefinition, SetupSpec, Step, StepDefinition} from './types.js'
@@ -90,7 +89,7 @@ export class PipelineLoader {
 
 /** Convert a free-form name into a valid identifier. */
 export function slugify(name: string): string {
-  return deburr(name)
+  return name.normalize('NFD').replaceAll(/[\u0300-\u036F]/g, '')
     .toLowerCase()
     .replaceAll(/[^\w-]/g, '-')
     .replaceAll(/-{2,}/g, '-')

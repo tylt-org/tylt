@@ -30,6 +30,14 @@ test('slugify converts accented characters', t => {
   t.is(slugify('Étape numéro un'), 'etape-numero-un')
 })
 
+test('slugify strips diacritics from various scripts', t => {
+  t.is(slugify('crème brûlée'), 'creme-brulee')
+  t.is(slugify('Ñoño'), 'nono')
+  t.is(slugify('Ångström'), 'angstrom')
+  t.is(slugify('Dženán'), 'dzenan')
+  t.is(slugify('naïve café'), 'naive-cafe')
+})
+
 test('slugify replaces spaces with hyphens', t => {
   t.is(slugify('hello world'), 'hello-world')
 })

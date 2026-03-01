@@ -23,7 +23,6 @@
   },
   "devDependencies": {
     "@ava/typescript": "^6.0.0",
-    "@types/lodash-es": "^4.17.12",
     "@types/node": "^24.10.15",
     "ava": "^6.4.1",
     "tsx": "^4.21.0",
