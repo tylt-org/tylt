@@ -1,10 +1,11 @@
 import process from 'node:process'
 import {dirname, resolve} from 'node:path'
 import type {Command} from 'commander'
-import {DockerCliExecutor, Tylt, ConsoleReporter} from '@tylt/core'
+import {Tylt, ConsoleReporter} from '@tylt/core'
 import {InteractiveReporter} from '../interactive-reporter.js'
 import {loadConfig} from '../config.js'
 import {getGlobalOptions} from '../utils.js'
+import {resolveExecutor} from '../executor.js'
 
 export function registerExecCommand(program: Command): void {
   program
@@ -25,7 +26,7 @@ export function registerExecCommand(program: Command): void {
       const {workdir, json} = getGlobalOptions(cmd)
       const workdirRoot = resolve(workdir)
 
-      const runtime = new DockerCliExecutor()
+      const runtime = await resolveExecutor()
       const reporter = json ? new ConsoleReporter() : new InteractiveReporter({verbose: options.verbose})
 
       const cwd = process.cwd()
