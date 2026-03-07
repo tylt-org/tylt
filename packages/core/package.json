@@ -1,6 +1,6 @@
 {
   "name": "@tylt/core",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Tylt core — programmatic API for containerized pipeline execution",
   "license": "MIT",
   "author": "Jérôme Desboeufs <jerome@livingdata.co>",
