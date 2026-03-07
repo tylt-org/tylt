@@ -1,7 +1,7 @@
 import {resolve} from 'node:path'
 import chalk from 'chalk'
 import type {Command} from 'commander'
-import {Tylt, formatDuration, formatSize, type StepState} from '@tylt/core'
+import {Tylt, formatDuration, formatSize} from '@tylt/core'
 import {getGlobalOptions} from '../utils.js'
 
 export function registerShowCommand(program: Command): void {
@@ -24,9 +24,7 @@ export function registerShowCommand(program: Command): void {
           await client.disconnect()
 
           // Steps arrive as a plain object after JSON serialization (not a Map)
-          const stepsArray: StepState[] = state.steps instanceof Map
-            ? [...state.steps.values()]
-            : Object.values(state.steps)
+          const stepsArray = Object.values(state.steps)
 
           if (json) {
             const steps = stepsArray.map(s => ({

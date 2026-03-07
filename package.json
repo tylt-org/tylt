@@ -16,7 +16,8 @@
   "homepage": "https://github.com/tylt-org/tylt#readme",
   "scripts": {
     "cli": "tsx packages/cli/src/index.ts",
-    "build": "tsc --build packages/core packages/cli",
+    "clean": "npm run clean --workspace=@tylt/core --workspace=@tylt/cli",
+    "build": "npm run build --workspace=@tylt/core --workspace=@tylt/cli",
     "test": "npm test --workspace=@tylt/core --workspace=@tylt/cli",
     "lint": "xo",
     "lint:fix": "xo --fix"
