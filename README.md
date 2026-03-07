@@ -37,6 +37,7 @@ npx @tylt/cli run
 - 📦 **Artifact management** — Immutable runs with artifacts, logs, and structured metadata
 - 🔄 **Detached execution** — Run pipelines in background, re-attach to monitor progress
 - 🛠️ **Programmatic API** — Use `@tylt/core` to embed pipeline execution in your own tools
+- 🔧 **Pluggable executor** — Swap the container runtime via `TYLT_EXECUTOR` (defaults to Docker CLI)
 
 ## Quick Start
 
@@ -96,7 +97,8 @@ npm install
 
 ```bash
 npm run cli -- run pipeline.yaml   # Dev mode (tsx, no build needed)
-npm run build                      # Compile all packages (tsc --build)
+npm run build                      # Compile all packages
+npm run clean                      # Remove dist and tsbuildinfo
 npm test                           # Run tests across all packages
 npm run lint                       # Lint with XO
 ```
