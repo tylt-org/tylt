@@ -70,6 +70,13 @@ export type Step = {
   /** Host directories copied into the container's writable layer (not bind-mounted). */
   sources?: MountSpec[];
   timeoutSec?: number;
+  /** Container resource limits enforced by the executor. */
+  resourceLimits?: {
+    /** Memory limit in Docker format (e.g. "512m", "1g"). */
+    memory?: string;
+    /** CPU limit (e.g. "0.5", "2"). */
+    cpus?: string;
+  };
   /** When true the pipeline continues even if this step exits non-zero. */
   allowFailure?: boolean;
   /** When true the container gets network access (default: isolated). */
@@ -120,6 +127,13 @@ export type KitStepDefinition = {
   mounts?: MountSpec[];
   sources?: MountSpec[];
   timeoutSec?: number;
+  /** Container resource limits enforced by the executor. */
+  resourceLimits?: {
+    /** Memory limit in Docker format (e.g. "512m", "1g"). */
+    memory?: string;
+    /** CPU limit (e.g. "0.5", "2"). */
+    cpus?: string;
+  };
   allowFailure?: boolean;
   allowNetwork?: boolean;
   retries?: number;

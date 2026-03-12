@@ -254,7 +254,8 @@ export class StepRunner {
               containerPath: m.container
             })),
             network: step.allowNetwork ? 'bridge' : 'none',
-            timeoutSec: step.timeoutSec
+            timeoutSec: step.timeoutSec,
+            resourceLimits: step.resourceLimits
           },
           ({stream, line}) => {
             if (stream === 'stdout') {

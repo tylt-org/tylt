@@ -102,7 +102,7 @@ const tylt = new Tylt({
 
 ### As a JS module
 
-A kit is a JS module exporting a default function that returns `{image, cmd}` (plus optional `setup`, `env`, `caches`, `mounts`, `sources`):
+A kit is a JS module exporting a default function that returns `{image, cmd}` (plus optional `setup`, `env`, `caches`, `mounts`, `sources`, `resourceLimits`):
 
 ```javascript
 // kits/rust.js
@@ -125,6 +125,35 @@ When a step uses `uses: <name>`, the kit is resolved in this order:
 4. **Custom kits** — kits passed via `new Tylt({kits: [...]})`
 5. **Built-in** — `shell`, `node`, `python`
 6. **npm module** — for scoped packages (`@org/kit-name`)
+
+## Resource Limits
+
+Cap memory and CPU per step with `resourceLimits`:
+
+```yaml
+- id: build
+  image: node:22
+  cmd: [npm, run, build]
+  resourceLimits:
+    memory: "1g"
+    cpus: "2"
+```
+
+Or programmatically:
+
+```typescript
+const pipeline = await tylt.load({
+  id: 'heavy',
+  steps: [{
+    id: 'train',
+    image: 'python:3.12',
+    cmd: ['python', 'train.py'],
+    resourceLimits: {memory: '4g', cpus: '4'}
+  }]
+})
+```
+
+Both `memory` (Docker format: `"128m"`, `"2g"`) and `cpus` (`"0.5"`, `"4"`) are optional. Values are passed directly to the container runtime (`--memory`, `--cpus`). Kit steps can provide defaults; user-level values take precedence.
 
 ## Main Exports
 

@@ -81,6 +81,7 @@ async function resolveKitStep(step: KitStepDefinition, id: string, name: string 
     mounts: mergeMounts(kitMounts, step.mounts),
     sources: mergeMounts(kitSources, step.sources),
     timeoutSec: step.timeoutSec,
+    resourceLimits: step.resourceLimits ?? kitOutput.resourceLimits,
     allowFailure: step.allowFailure,
     allowNetwork: step.allowNetwork ?? kitOutput.allowNetwork,
     retries: step.retries,

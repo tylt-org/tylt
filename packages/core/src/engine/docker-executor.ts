@@ -204,6 +204,14 @@ export class DockerCliExecutor extends ContainerExecutor {
       `tylt.workspace=${workspace.id}`
     ]
 
+    if (request.resourceLimits?.memory) {
+      args.push('--memory', request.resourceLimits.memory)
+    }
+
+    if (request.resourceLimits?.cpus) {
+      args.push('--cpus', request.resourceLimits.cpus)
+    }
+
     if (request.env) {
       for (const [key, value] of Object.entries(request.env)) {
         args.push('-e', `${key}=${value}`)

@@ -93,6 +93,13 @@ export type RunContainerRequest = {
   network: 'none' | 'bridge';
   /** Execution timeout in seconds (undefined = no timeout) */
   timeoutSec?: number;
+  /** Container resource limits (enforced by the executor) */
+  resourceLimits?: {
+    /** Memory limit (Docker format, e.g., "512m", "1g") */
+    memory?: string;
+    /** CPU limit (e.g., "0.5", "2") */
+    cpus?: string;
+  };
 }
 
 /**

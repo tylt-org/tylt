@@ -22,6 +22,7 @@
 | `timeoutSec`    | number                | Execution timeout in seconds                                    |
 | `retries`       | number                | Retry attempts on transient failure                             |
 | `retryDelayMs`  | number                | Delay between retries (default: 5000)                           |
+| `resourceLimits`| object                | Container resource limits (`memory`, `cpus`) — see below        |
 | `allowFailure`  | boolean               | Continue pipeline if step fails                                 |
 | `allowNetwork`  | boolean               | Enable network access in the container                          |
 
@@ -95,6 +96,26 @@ setup:
 - `allowNetwork`: enable network during setup even if the run phase is isolated
 
 Built-in kits produce a `setup` phase automatically when `install` is enabled. For kit steps, user-level `setup` merges with kit defaults (user `cmd` overrides, caches merge by name, user `allowNetwork` overrides).
+
+## Resource Limits
+
+Constrain CPU and memory available to a container:
+
+```yaml
+- id: build
+  image: node:22
+  cmd: [npm, run, build]
+  resourceLimits:
+    memory: "1g"
+    cpus: "2"
+```
+
+| Field    | Type   | Description                                      |
+|----------|--------|--------------------------------------------------|
+| `memory` | string | Memory limit in Docker format (`"128m"`, `"2g"`) |
+| `cpus`   | string | CPU limit (`"0.5"` = half a core, `"4"` = four)  |
+
+Both fields are optional. When omitted, the container runs without that limit. Values are passed directly to Docker (`--memory`, `--cpus`). Kit steps can also specify `resourceLimits`; user-level values override kit defaults.
 
 ## Conditional Steps
 
