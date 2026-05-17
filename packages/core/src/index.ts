@@ -1,7 +1,7 @@
 // Engine layer
 export {Workspace} from './engine/workspace.js'
 export {ContainerExecutor, type LogLine, type OnLogLine} from './engine/executor.js'
-export {DockerCliExecutor} from './engine/docker-executor.js'
+export {DockerCliExecutor, type DockerCliExecutorOptions} from './engine/docker-executor.js'
 export type {BindMount, InputMount, OutputMount, CacheMount, SetupPhase, RunContainerRequest, RunContainerResult} from './engine/types.js'
 
 // Tylt facade

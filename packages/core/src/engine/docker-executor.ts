@@ -22,9 +22,37 @@ function dockerCliEnv(): Record<string, string> {
   return env
 }
 
+/**
+ * Construction-time options for `DockerCliExecutor`. These are fleet-wide
+ * security postures set once per executor (a fleet either trusts SUID
+ * binaries or doesn't), not per-step variations.
+ */
+export type DockerCliExecutorOptions = {
+  /** Linux capabilities to re-add after the default `--cap-drop=ALL`.
+   *  Example: `['NET_RAW']` for a step that needs `ping`.
+   *  Default: `[]` (zero capabilities). */
+  allowedCapabilities?: string[];
+
+  /** When true, do NOT pass `--security-opt=no-new-privileges`.
+   *  Use only for legacy SUID binaries that need to elevate.
+   *  Default: false. */
+  allowNewPrivileges?: boolean;
+}
+
+type ResolvedExecutorOptions = Required<DockerCliExecutorOptions>
+
 export class DockerCliExecutor extends ContainerExecutor {
   private readonly env = dockerCliEnv()
   private readonly activeContainers = new Set<string>()
+  private readonly options: ResolvedExecutorOptions
+
+  constructor(options: DockerCliExecutorOptions = {}) {
+    super()
+    this.options = {
+      allowedCapabilities: options.allowedCapabilities ?? [],
+      allowNewPrivileges: options.allowNewPrivileges ?? false
+    }
+  }
 
   async check(): Promise<void> {
     try {
@@ -91,7 +119,7 @@ export class DockerCliExecutor extends ContainerExecutor {
     onLogLine: OnLogLine
   ): Promise<RunContainerResult> {
     const startedAt = new Date()
-    const args = this.buildCreateArgs(workspace, request)
+    const args = buildCreateArgs(workspace, request, this.options)
     args.push(request.image, ...request.cmd)
 
     let exitCode = 0
@@ -139,7 +167,7 @@ export class DockerCliExecutor extends ContainerExecutor {
     const createNetwork = setupNeedsNetwork ? 'bridge' : runNetwork
 
     // Build create args with sleep entrypoint to keep container alive
-    const args = this.buildCreateArgs(workspace, request, {
+    const args = buildCreateArgs(workspace, request, this.options, {
       networkOverride: createNetwork,
       setupCaches: setup!.caches
     })
@@ -181,80 +209,6 @@ export class DockerCliExecutor extends ContainerExecutor {
     }
 
     return {exitCode, startedAt, finishedAt: new Date(), error}
-  }
-
-  /**
-   * Build common `docker create` arguments.
-   */
-  private buildCreateArgs(
-    workspace: Workspace,
-    request: RunContainerRequest,
-    options?: {networkOverride?: string; setupCaches?: CacheMount[]}
-  ): string[] {
-    const network = options?.networkOverride ?? request.network
-    const args = [
-      'create',
-      '--name',
-      request.name,
-      '--network',
-      network,
-      '--label',
-      'tylt=true',
-      '--label',
-      `tylt.workspace=${workspace.id}`
-    ]
-
-    if (request.resourceLimits?.memory) {
-      args.push('--memory', request.resourceLimits.memory)
-    }
-
-    if (request.resourceLimits?.cpus) {
-      args.push('--cpus', request.resourceLimits.cpus)
-    }
-
-    if (request.env) {
-      for (const [key, value] of Object.entries(request.env)) {
-        args.push('-e', `${key}=${value}`)
-      }
-    }
-
-    // Mount inputs (committed run artifacts, read-only)
-    for (const input of request.inputs) {
-      const hostPath = workspace.runArtifactsPath(input.runId)
-      args.push('-v', `${hostPath}:${input.containerPath}:ro`)
-    }
-
-    // Mount caches (persistent, read-write)
-    if (request.caches) {
-      for (const cache of request.caches) {
-        const hostPath = workspace.cachePath(cache.name)
-        args.push('-v', `${hostPath}:${cache.containerPath}:rw`)
-      }
-    }
-
-    // Mount setup-only caches (not duplicating any already in request.caches)
-    if (options?.setupCaches) {
-      const existingNames = new Set(request.caches?.map(c => c.name))
-      for (const cache of options.setupCaches) {
-        if (!existingNames.has(cache.name)) {
-          const hostPath = workspace.cachePath(cache.name)
-          args.push('-v', `${hostPath}:${cache.containerPath}:rw`)
-        }
-      }
-    }
-
-    // Mount host bind mounts (always read-only)
-    if (request.mounts) {
-      for (const mount of request.mounts) {
-        args.push('-v', `${mount.hostPath}:${mount.containerPath}:ro`)
-      }
-    }
-
-    // Mount output (staging run artifacts, read-write)
-    const outputHostPath = workspace.runStagingArtifactsPath(request.output.stagingRunId)
-    args.push('-v', `${outputHostPath}:${request.output.containerPath}:rw`)
-
-    return args
   }
 
   /**
@@ -341,4 +295,104 @@ export class DockerCliExecutor extends ContainerExecutor {
       // Best effort cleanup
     }
   }
+}
+
+/**
+ * Build `docker create` arguments for a container request.
+ *
+ * Exposed at module scope (rather than as a class method) so it can be
+ * unit-tested without spinning up Docker. Pure function: deterministic
+ * output for a given input, no I/O.
+ *
+ * Emits hardened defaults: drops all Linux capabilities, sets
+ * `no-new-privileges`, aligns `--memory-swap` with `--memory` so the
+ * declared memory cap is not bypassable via swap. Escape hatches
+ * (`allowedCapabilities`, `allowNewPrivileges`) are honored only when
+ * the caller explicitly opted in through `DockerCliExecutorOptions`.
+ */
+export function buildCreateArgs(
+  workspace: Workspace,
+  request: RunContainerRequest,
+  executorOptions: ResolvedExecutorOptions,
+  options?: {networkOverride?: string; setupCaches?: CacheMount[]}
+): string[] {
+  const network = options?.networkOverride ?? request.network
+  const args: string[] = ['create', '--cap-drop=ALL']
+
+  for (const cap of executorOptions.allowedCapabilities) {
+    args.push(`--cap-add=${cap}`)
+  }
+
+  if (!executorOptions.allowNewPrivileges) {
+    args.push('--security-opt', 'no-new-privileges')
+  }
+
+  args.push(
+    '--name',
+    request.name,
+    '--network',
+    network,
+    '--label',
+    'tylt=true',
+    '--label',
+    `tylt.workspace=${workspace.id}`
+  )
+
+  if (request.resourceLimits?.memory) {
+    // Pin --memory-swap to --memory so the cap can't be bypassed via swap.
+    // Docker's default would be 2× memory.
+    args.push('--memory', request.resourceLimits.memory, '--memory-swap', request.resourceLimits.memory)
+  }
+
+  if (request.resourceLimits?.cpus) {
+    args.push('--cpus', request.resourceLimits.cpus)
+  }
+
+  if (request.resourceLimits?.pidsLimit !== undefined) {
+    args.push('--pids-limit', String(request.resourceLimits.pidsLimit))
+  }
+
+  if (request.env) {
+    for (const [key, value] of Object.entries(request.env)) {
+      args.push('-e', `${key}=${value}`)
+    }
+  }
+
+  // Mount inputs (committed run artifacts, read-only)
+  for (const input of request.inputs) {
+    const hostPath = workspace.runArtifactsPath(input.runId)
+    args.push('-v', `${hostPath}:${input.containerPath}:ro`)
+  }
+
+  // Mount caches (persistent, read-write)
+  if (request.caches) {
+    for (const cache of request.caches) {
+      const hostPath = workspace.cachePath(cache.name)
+      args.push('-v', `${hostPath}:${cache.containerPath}:rw`)
+    }
+  }
+
+  // Mount setup-only caches (not duplicating any already in request.caches)
+  if (options?.setupCaches) {
+    const existingNames = new Set(request.caches?.map(c => c.name))
+    for (const cache of options.setupCaches) {
+      if (!existingNames.has(cache.name)) {
+        const hostPath = workspace.cachePath(cache.name)
+        args.push('-v', `${hostPath}:${cache.containerPath}:rw`)
+      }
+    }
+  }
+
+  // Mount host bind mounts (always read-only)
+  if (request.mounts) {
+    for (const mount of request.mounts) {
+      args.push('-v', `${mount.hostPath}:${mount.containerPath}:ro`)
+    }
+  }
+
+  // Mount output (staging run artifacts, read-write)
+  const outputHostPath = workspace.runStagingArtifactsPath(request.output.stagingRunId)
+  args.push('-v', `${outputHostPath}:${request.output.containerPath}:rw`)
+
+  return args
 }

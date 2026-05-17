@@ -99,6 +99,9 @@ export type RunContainerRequest = {
     memory?: string;
     /** CPU limit (e.g., "0.5", "2") */
     cpus?: string;
+    /** Cap process/thread count (`docker create --pids-limit`).
+     *  Defends against fork bombs and runaway forks. */
+    pidsLimit?: number;
   };
 }
 
